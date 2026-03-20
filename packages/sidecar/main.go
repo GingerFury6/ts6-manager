@@ -815,22 +815,30 @@ func (s *Sidecar) ClosePeer(id string) {
 	s.peersLock.Unlock()
 }
 
-func (s *Sidecar) StartFFmpeg(source string, width int, height int) {
+func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate int) {
 	s.resetSyncTiming()
-
 	s.ffmpegLock.Lock()
+
 	defer s.ffmpegLock.Unlock()
 
 	s.StopFFmpegLocked()
+
 	s.source = source
 
 	w := width
 	h := height
+	fps := framerate
+
 	if w <= 0 {
 		w = envIntOrDefault("VIDEO_WIDTH", 1280)
 	}
+
 	if h <= 0 {
 		h = envIntOrDefault("VIDEO_HEIGHT", 720)
+	}
+
+	if fps <= 0 {
+		fps = envIntOrDefault("VIDEO_FRAMERATE", 30)
 	}
 
 	args := []string{}
@@ -841,6 +849,7 @@ func (s *Sidecar) StartFFmpeg(source string, width int, height int) {
 		} else {
 			args = append(args, "-stream_loop", "-1")
 		}
+
 		args = append(args, "-fflags", "+genpts+discardcorrupt", "-re", "-i", source)
 	} else {
 		args = append(args, "-re", "-f", "lavfi", "-i", fmt.Sprintf("color=c=black:s=%dx%d:r=1", w, h))
@@ -851,8 +860,8 @@ func (s *Sidecar) StartFFmpeg(source string, width int, height int) {
 
 	if source != "" {
 		vf := fmt.Sprintf(
-			"fps=30,scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
-			w, h, w, h,
+			"fps=%d,scale=%d:%d:force_original_aspect_ratio=decrease,pad=%d:%d:(ow-iw)/2:(oh-ih)/2,format=yuv420p",
+			fps, w, h, w, h,
 		)
 		args = append(args,
 			"-map", "0:v:0",
@@ -1060,16 +1069,17 @@ func main() {
 
 	mux.HandleFunc("POST /source", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Source string `json:"source"`
-			Width  int    `json:"width"`
-			Height int    `json:"height"`
+			Source    string `json:"source"`
+			Width     int    `json:"width"`
+			Height    int    `json:"height"`
+			Framerate int    `json:"framerate"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		log.Printf("[API] Setting source: %s (%dx%d)", req.Source, req.Width, req.Height)
-		sidecar.StartFFmpeg(req.Source, req.Width, req.Height)
+		log.Printf("[API] Setting source: %s (%dx%d @ %dfps)", req.Source, req.Width, req.Height, req.Framerate)
+		sidecar.StartFFmpeg(req.Source, req.Width, req.Height, req.Framerate)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 

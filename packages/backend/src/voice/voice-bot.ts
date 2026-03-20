@@ -852,6 +852,7 @@ export class VoiceBot extends EventEmitter {
       resolvedSource,
       presetConfig.width,
       presetConfig.height,
+      presetConfig.framerate,
     );
 
     console.log(`[VoiceBot ${this.config.id}] Video stream started: ${stream.id}, source: ${source}`);
@@ -916,6 +917,7 @@ export class VoiceBot extends EventEmitter {
       resolvedSource,
       currentPreset.width,
       currentPreset.height,
+      currentPreset.framerate,
     );
     console.log(`[VoiceBot ${this.config.id}] Video source changed: ${source}`);
     this.emit('videoSourceChanged', source);
