@@ -848,7 +848,11 @@ export class VoiceBot extends EventEmitter {
 
     // Resolve YouTube/streaming URLs via yt-dlp, then start ffmpeg
     const resolvedSource = await resolveVideoUrl(source, presetConfig.height);
-    await this.sidecarHttp.setSource(resolvedSource);
+    await this.sidecarHttp.setSource(
+      resolvedSource,
+      presetConfig.width,
+      presetConfig.height,
+    );
 
     console.log(`[VoiceBot ${this.config.id}] Video stream started: ${stream.id}, source: ${source}`);
     this.emit('videoStreamStarted', { streamId: stream.id, source, preset: this._videoPreset });
@@ -907,7 +911,12 @@ export class VoiceBot extends EventEmitter {
     this._videoSource = source;
     const currentPreset = STREAM_PRESETS[this._videoPreset] || STREAM_PRESETS[DEFAULT_PRESET];
     const resolvedSource = await resolveVideoUrl(source, currentPreset.height);
-    await this.sidecarHttp.setSource(resolvedSource);
+
+    await this.sidecarHttp.setSource(
+      resolvedSource,
+      currentPreset.width,
+      currentPreset.height,
+    );
     console.log(`[VoiceBot ${this.config.id}] Video source changed: ${source}`);
     this.emit('videoSourceChanged', source);
   }

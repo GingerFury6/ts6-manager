@@ -815,13 +815,23 @@ func (s *Sidecar) ClosePeer(id string) {
 	s.peersLock.Unlock()
 }
 
-func (s *Sidecar) StartFFmpeg(source string) {
+func (s *Sidecar) StartFFmpeg(source string, width int, height int) {
 	s.resetSyncTiming()
+
 	s.ffmpegLock.Lock()
 	defer s.ffmpegLock.Unlock()
 
 	s.StopFFmpegLocked()
 	s.source = source
+
+	w := width
+	h := height
+	if w <= 0 {
+		w = envIntOrDefault("VIDEO_WIDTH", 1280)
+	}
+	if h <= 0 {
+		h = envIntOrDefault("VIDEO_HEIGHT", 720)
+	}
 
 	args := []string{}
 
@@ -833,13 +843,9 @@ func (s *Sidecar) StartFFmpeg(source string) {
 		}
 		args = append(args, "-fflags", "+genpts+discardcorrupt", "-re", "-i", source)
 	} else {
-		w := envIntOrDefault("VIDEO_WIDTH", 1280)
-		h := envIntOrDefault("VIDEO_HEIGHT", 720)
 		args = append(args, "-re", "-f", "lavfi", "-i", fmt.Sprintf("color=c=black:s=%dx%d:r=1", w, h))
 	}
 
-	w := envIntOrDefault("VIDEO_WIDTH", 1280)
-	h := envIntOrDefault("VIDEO_HEIGHT", 720)
 	vBitrate := envOrDefault("VIDEO_BITRATE", "1500k")
 	audioDelayMs := envIntOrDefault("AUDIO_DELAY_MS", 0)
 
@@ -1055,13 +1061,15 @@ func main() {
 	mux.HandleFunc("POST /source", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Source string `json:"source"`
+			Width  int    `json:"width"`
+			Height int    `json:"height"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		log.Printf("[API] Setting source: %s", req.Source)
-		sidecar.StartFFmpeg(req.Source)
+		log.Printf("[API] Setting source: %s (%dx%d)", req.Source, req.Width, req.Height)
+		sidecar.StartFFmpeg(req.Source, req.Width, req.Height)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 
