@@ -316,12 +316,14 @@ func (s *Sidecar) StartRTP() error {
 	if err != nil {
 		return fmt.Errorf("bind video UDP: %w", err)
 	}
+	_ = s.videoConn.SetReadBuffer(envIntOrDefault("VIDEO_RTP_READ_BUFFER", 4*1024*1024))
 	s.videoPort = s.videoConn.LocalAddr().(*net.UDPAddr).Port
 
 	s.audioConn, err = net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
 	if err != nil {
 		return fmt.Errorf("bind audio UDP: %w", err)
 	}
+	_ = s.audioConn.SetReadBuffer(envIntOrDefault("AUDIO_RTP_READ_BUFFER", 1*1024*1024))
 	s.audioPort = s.audioConn.LocalAddr().(*net.UDPAddr).Port
 
 	log.Printf("[RTP] Video port: %d, Audio port: %d", s.videoPort, s.audioPort)
@@ -871,13 +873,13 @@ func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate in
 	args = append(args,
 		"-pix_fmt", "yuv420p",
 		"-c:v", "libvpx",
-		"-cpu-used", "12",
+		"-cpu-used", "8",
 		"-deadline", "realtime",
 		"-lag-in-frames", "0",
 		"-error-resilient", "1",
 		"-b:v", vBitrate,
 		"-maxrate", "2M",
-		"-bufsize", "100k",
+		"-bufsize", envOrDefault("VIDEO_BUFSIZE", "500k"),
 		"-keyint_min", "12",
 		"-g", "12",
 		"-auto-alt-ref", "0",
