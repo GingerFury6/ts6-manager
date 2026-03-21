@@ -127,6 +127,7 @@ export class VoiceBot extends EventEmitter {
   private _activeStreamId: string | null = null;
   private _videoSource: string | null = null;
   private _videoPreset: string = DEFAULT_PRESET;
+  private _videoFramerate: number = STREAM_PRESETS[DEFAULT_PRESET]?.framerate ?? 30;
   private _videoStartedAt: number | null = null;
   private _viewers: Map<number, VideoViewerInfo> = new Map();
 
@@ -750,6 +751,7 @@ export class VoiceBot extends EventEmitter {
       streamId: this._activeStreamId,
       source: this._videoSource,
       preset: this._videoPreset,
+      framerate: this._videoFramerate,
       startedAt: this._videoStartedAt,
       viewerCount: this._viewers.size,
       viewers: Array.from(this._viewers.values()),
@@ -758,7 +760,7 @@ export class VoiceBot extends EventEmitter {
   }
 
   /** Start video streaming to TS6 via WebRTC */
-  async startVideoStream(source: string, preset?: string): Promise<void> {
+  async startVideoStream(source: string, preset?: string, framerate?: number): Promise<void> {
     if (this._status !== 'connected' && this._status !== 'playing' && this._status !== 'paused') {
       throw new Error('Bot is not connected');
     }
@@ -768,8 +770,13 @@ export class VoiceBot extends EventEmitter {
 
     const sidecarBinary = this.config.sidecarBinaryPath || process.env.SIDECAR_BINARY_PATH || 'sidecar';
     const sidecarPort = this.config.sidecarPort || 9800;
-    this._videoPreset = preset || this.config.streamPreset || DEFAULT_PRESET;
+    this._videoPreset = preset ?? this.config.streamPreset ?? DEFAULT_PRESET;
     const presetConfig = STREAM_PRESETS[this._videoPreset] || STREAM_PRESETS[DEFAULT_PRESET];
+    const effectiveFramerate = framerate && framerate > 0
+      ? framerate
+      : presetConfig.framerate;
+
+    this._videoFramerate = effectiveFramerate;
 
     // Check if sidecar URL is set (Docker mode — sidecar runs as separate container)
     const sidecarUrl = process.env.SIDECAR_URL;
@@ -784,7 +791,7 @@ export class VoiceBot extends EventEmitter {
         port: sidecarPort,
         videoBitrate: presetConfig.bitrate,
         videoResolution: { width: presetConfig.width, height: presetConfig.height },
-        videoFramerate: presetConfig.framerate,
+        videoFramerate: effectiveFramerate,
       };
 
       this.sidecarProc = new SidecarProcess(sidecarConfig);
@@ -852,7 +859,7 @@ export class VoiceBot extends EventEmitter {
       resolvedSource,
       presetConfig.width,
       presetConfig.height,
-      presetConfig.framerate,
+      effectiveFramerate,
     );
 
     console.log(`[VoiceBot ${this.config.id}] Video stream started: ${stream.id}, source: ${source}`);
@@ -917,7 +924,7 @@ export class VoiceBot extends EventEmitter {
       resolvedSource,
       currentPreset.width,
       currentPreset.height,
-      currentPreset.framerate,
+      this._videoFramerate
     );
     console.log(`[VoiceBot ${this.config.id}] Video source changed: ${source}`);
     this.emit('videoSourceChanged', source);
@@ -971,7 +978,7 @@ export class VoiceBot extends EventEmitter {
       const clid = parseInt(params.clid) || 0;
       if (this._viewers.has(clid)) {
         console.log(`[VoiceBot ${this.config.id}] Viewer left: clid=${clid}`);
-        this.sidecarHttp?.closePeer(String(clid)).catch(() => {});
+        this.sidecarHttp?.closePeer(String(clid)).catch(() => { });
         this._viewers.delete(clid);
         this.emit('videoViewerLeft', clid);
       }

@@ -29,6 +29,7 @@ export interface VideoStreamStatus {
   streamId: string | null;
   source: string | null;
   preset: string;
+  framerate: number;
   startedAt: number | null;
   viewerCount: number;
   viewers: VideoViewerInfo[];

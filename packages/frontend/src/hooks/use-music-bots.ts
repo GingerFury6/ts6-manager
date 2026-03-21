@@ -235,8 +235,17 @@ export function useVideoStreamStatus(botId: number | null) {
 export function useStartVideoStream() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ botId, source, preset }: { botId: number; source: string; preset?: string }) =>
-      musicBotsApi.startStream(botId, source, preset),
+    mutationFn: ({
+      botId,
+      source,
+      preset,
+      framerate,
+    }: {
+      botId: number;
+      source: string;
+      preset?: string;
+      framerate?: number;
+    }) => musicBotsApi.startStream(botId, source, preset, framerate),
     onSuccess: (_, { botId }) => {
       qc.invalidateQueries({ queryKey: ['video-stream-status', botId] });
       qc.invalidateQueries({ queryKey: ['music-bot-state', botId] });
