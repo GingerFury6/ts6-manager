@@ -873,7 +873,7 @@ func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate in
 	args = append(args,
 		"-pix_fmt", "yuv420p",
 		"-c:v", "libvpx",
-		"-cpu-used", "8",
+		"-cpu-used", "6",
 		"-deadline", "realtime",
 		"-lag-in-frames", "0",
 		"-error-resilient", "1",
