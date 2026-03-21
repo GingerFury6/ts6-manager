@@ -40,6 +40,7 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
   const [sourceUrl, setSourceUrl] = useState('');
   const [preset, setPreset] = useState('720p');
   const [framerate, setFramerate] = useState('30');
+  const [bitrate, setBitrate] = useState('2500k');
 
   const { data: streamStatus } = useVideoStreamStatus(botId);
   const startStream = useStartVideoStream();
@@ -57,6 +58,7 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
       source: sourceUrl.trim(),
       preset,
       framerate: Number(framerate),
+      bitrate: bitrate.trim(),
     });
   };
 
@@ -161,6 +163,17 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
                       ))}
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Video Bitrate</Label>
+                    <Input
+                      value={bitrate}
+                      onChange={(e) => setBitrate(e.target.value)}
+                      placeholder="e.g. 1500k, 2500k, 4500k"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Examples: 1500k, 2500k, 4500k, 6000k
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -207,6 +220,7 @@ export function VideoStreamTab({ botId, botStatus }: VideoStreamTabProps) {
               <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                 <span>Preset: <strong>{streamStatus.preset}</strong></span>
                 <span>FPS: <strong>{streamStatus.framerate}</strong></span>
+                <span>Bitrate: <strong>{streamStatus.bitrate}</strong></span>
                 {streamStatus.source && (
                   <span className="truncate max-w-xs">
                     Source: <strong>{streamStatus.source}</strong>

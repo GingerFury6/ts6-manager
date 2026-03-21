@@ -817,7 +817,7 @@ func (s *Sidecar) ClosePeer(id string) {
 	s.peersLock.Unlock()
 }
 
-func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate int) {
+func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate int, bitrate string) {
 	s.resetSyncTiming()
 	s.ffmpegLock.Lock()
 
@@ -857,7 +857,10 @@ func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate in
 		args = append(args, "-re", "-f", "lavfi", "-i", fmt.Sprintf("color=c=black:s=%dx%d:r=1", w, h))
 	}
 
-	vBitrate := envOrDefault("VIDEO_BITRATE", "1500k")
+	vBitrate := strings.TrimSpace(bitrate)
+		if vBitrate == "" {
+			vBitrate = envOrDefault("VIDEO_BITRATE", "1500k")
+		}
 	audioDelayMs := envIntOrDefault("AUDIO_DELAY_MS", 0)
 
 	if source != "" {
@@ -878,7 +881,7 @@ func (s *Sidecar) StartFFmpeg(source string, width int, height int, framerate in
 		"-lag-in-frames", "0",
 		"-error-resilient", "1",
 		"-b:v", vBitrate,
-		"-maxrate", "2M",
+		"-maxrate", vBitrate,
 		"-bufsize", envOrDefault("VIDEO_BUFSIZE", "500k"),
 		"-keyint_min", "12",
 		"-g", "12",
@@ -1075,13 +1078,14 @@ func main() {
 			Width     int    `json:"width"`
 			Height    int    `json:"height"`
 			Framerate int    `json:"framerate"`
+			Bitrate   string `json:"bitrate"` 
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		log.Printf("[API] Setting source: %s (%dx%d @ %dfps)", req.Source, req.Width, req.Height, req.Framerate)
-		sidecar.StartFFmpeg(req.Source, req.Width, req.Height, req.Framerate)
+		log.Printf("[API] Setting source: %s (%dx%d @ %dfps)", req.Source, req.Width, req.Height, req.Framerate, req.Bitrate)
+		sidecar.StartFFmpeg(req.Source, req.Width, req.Height, req.Framerate, req.Bitrate)
 		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 	})
 

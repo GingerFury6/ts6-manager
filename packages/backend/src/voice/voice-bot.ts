@@ -128,6 +128,7 @@ export class VoiceBot extends EventEmitter {
   private _videoSource: string | null = null;
   private _videoPreset: string = DEFAULT_PRESET;
   private _videoFramerate: number = STREAM_PRESETS[DEFAULT_PRESET]?.framerate ?? 30;
+  private _videoBitrate: string = STREAM_PRESETS[DEFAULT_PRESET]?.bitrate ?? '2500k';
   private _videoStartedAt: number | null = null;
   private _viewers: Map<number, VideoViewerInfo> = new Map();
 
@@ -752,6 +753,7 @@ export class VoiceBot extends EventEmitter {
       source: this._videoSource,
       preset: this._videoPreset,
       framerate: this._videoFramerate,
+      bitrate: this._videoBitrate,
       startedAt: this._videoStartedAt,
       viewerCount: this._viewers.size,
       viewers: Array.from(this._viewers.values()),
@@ -760,7 +762,7 @@ export class VoiceBot extends EventEmitter {
   }
 
   /** Start video streaming to TS6 via WebRTC */
-  async startVideoStream(source: string, preset?: string, framerate?: number): Promise<void> {
+  async startVideoStream(source: string, preset?: string, framerate?: number, bitrate?: string): Promise<void> {
     if (this._status !== 'connected' && this._status !== 'playing' && this._status !== 'paused') {
       throw new Error('Bot is not connected');
     }
@@ -775,8 +777,12 @@ export class VoiceBot extends EventEmitter {
     const effectiveFramerate = framerate && framerate > 0
       ? framerate
       : presetConfig.framerate;
+    const effectiveBitrate = bitrate?.trim()
+      ? bitrate.trim()
+      : presetConfig.bitrate;
 
     this._videoFramerate = effectiveFramerate;
+    this._videoBitrate = effectiveBitrate;
 
     // Check if sidecar URL is set (Docker mode — sidecar runs as separate container)
     const sidecarUrl = process.env.SIDECAR_URL;
@@ -789,7 +795,7 @@ export class VoiceBot extends EventEmitter {
       const sidecarConfig: SidecarConfig = {
         binaryPath: sidecarBinary,
         port: sidecarPort,
-        videoBitrate: presetConfig.bitrate,
+        videoBitrate: effectiveBitrate,
         videoResolution: { width: presetConfig.width, height: presetConfig.height },
         videoFramerate: effectiveFramerate,
       };
@@ -860,6 +866,7 @@ export class VoiceBot extends EventEmitter {
       presetConfig.width,
       presetConfig.height,
       effectiveFramerate,
+      effectiveBitrate,
     );
 
     console.log(`[VoiceBot ${this.config.id}] Video stream started: ${stream.id}, source: ${source}`);
@@ -924,7 +931,8 @@ export class VoiceBot extends EventEmitter {
       resolvedSource,
       currentPreset.width,
       currentPreset.height,
-      this._videoFramerate
+      this._videoFramerate,
+      this._videoBitrate,
     );
     console.log(`[VoiceBot ${this.config.id}] Video source changed: ${source}`);
     this.emit('videoSourceChanged', source);

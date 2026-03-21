@@ -240,12 +240,14 @@ export function useStartVideoStream() {
       source,
       preset,
       framerate,
+      bitrate,
     }: {
       botId: number;
       source: string;
       preset?: string;
       framerate?: number;
-    }) => musicBotsApi.startStream(botId, source, preset, framerate),
+      bitrate?: string;
+    }) => musicBotsApi.startStream(botId, source, preset, framerate, bitrate),
     onSuccess: (_, { botId }) => {
       qc.invalidateQueries({ queryKey: ['video-stream-status', botId] });
       qc.invalidateQueries({ queryKey: ['music-bot-state', botId] });

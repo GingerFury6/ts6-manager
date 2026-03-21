@@ -30,6 +30,7 @@ export interface VideoStreamStatus {
   source: string | null;
   preset: string;
   framerate: number;
+  bitrate: string;
   startedAt: number | null;
   viewerCount: number;
   viewers: VideoViewerInfo[];
